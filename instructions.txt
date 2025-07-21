@@ -1,0 +1,25 @@
+run server: node src/server.js
+run test: npm run test
+
+
+After schema change:
+npx prisma generate
+npx dotenv -e .env.test -- prisma migrate dev --name init
+npm run reset:test
+npm run test
+
+
+
+ToDos:
+
+
+Dashboard: Remove search bar and Add grade Button
+
+
+When click the bars show the courses with those grades
+
+
+App limitations:
+Its designed for NTUA ECE // we can make it for other schools too if we add logic for schools
+
+
