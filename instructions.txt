@@ -11,12 +11,14 @@ npm run test
 
 
 ToDos:
+Docker
+Fix Testing
+Check code for minor fixes (comments, doc) mostly backend
+Deplpoyment (oracle)
 
+Rearange routes like course.routes
 
-Dashboard: Remove search bar and Add grade Button
-
-
-When click the bars show the courses with those grades
+// When click the bars show the courses with those grades
 
 
 App limitations:

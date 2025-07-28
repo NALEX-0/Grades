@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import PassedCoursesPage from './pages/PassedCoursesPage';
+import CourseDetailsPage from './pages/CourseDetailsPage';
 
 function App() {
   return (
@@ -35,7 +36,17 @@ function App() {
               }
             /> 
 
-            <Route path="*" element={<Navigate to="/dashboard" />} />
+            <Route 
+              path="/courses/:courseId"
+              element={
+                <PrivateRoute>
+                  <CourseDetailsPage />
+                </PrivateRoute>
+              } 
+            />
+
+            {/* <Route path="*" element={<Navigate to="/dashboard" />} /> */}
+            <Route path="*" element={<Navigate to="/login" />} />
           </Routes>
         </div>
       </div>

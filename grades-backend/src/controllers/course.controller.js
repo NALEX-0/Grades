@@ -69,6 +69,125 @@ async function getAllCourses(req, res) {
   }
 }
 
+
+/**
+ * Get course name and final grade for the user for courseId.
+ * @route GET /api/courses/:courseId/summary
+ * @returns 200 - Course summary
+ * @returns 500 - Server error
+ */
+async function getCourseSummary(req, res) {
+  const userId = req.user.id;
+  const courseId = parseInt(req.params.courseId);
+
+  try {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { name: true },
+    });
+
+    const topGrade = await prisma.grade.findFirst({
+      where: {
+        userId,
+        courseId,
+        score: { gte: 5 },
+      },
+      orderBy: { score: 'desc' },
+      include: {
+        examination: true,
+      },
+    });
+
+    return res.status(200).json({
+      courseId,
+      courseName: course?.name || 'Unknown',
+      finalGrade: topGrade?.score || null,
+      examination: topGrade?.examination?.name || null,
+    });
+  } catch (err) {
+    console.error('Failed to fetch course summary:', err);
+    return res.status(500).json({ error: 'Failed to fetch course summary' });
+  }
+}
+
+/**
+ * Get all grades for a user in a course for line graph.
+ * @route GET /api/courses/:courseId/grades/graph
+ * @returns 200 - Grades formatted for graph display
+ * @returns 500 - Server error
+ */
+async function getCourseGradesGraph(req, res) {
+  const userId = req.user.id;
+  const courseId = parseInt(req.params.courseId);
+
+  try {
+    const grades = await prisma.grade.findMany({
+      where: { userId, courseId },
+      include: {
+        examination: true,
+      },
+      orderBy: {
+        examinationId: 'asc',
+      },
+    });
+
+    const formatted = grades.map(g => ({
+      score: g.score,
+      examination: g.examination?.name || 'Unknown',
+    }));
+
+    return res.status(200).json({ grades: formatted });
+  } catch (err) {
+    console.error('Failed to fetch course grades for graph:', err);
+    return res.status(500).json({ error: 'Failed to fetch course grades for graph' });
+  }
+}
+
+/**
+ * Get paginated grades for a course for the logged-in user.
+ * @route GET /api/courses/:courseId/grades
+ * @query page - page number
+ * @query limit - number of records per page
+ * @returns 200 - Paginated grades with exam info
+ * @returns 500 - Server error
+ */
+async function getCourseGradesTable(req, res) {
+  const userId = req.user.id;
+  const courseId = parseInt(req.params.courseId);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const skip = (page - 1) * limit;
+
+  try {
+    const [grades, total] = await Promise.all([
+      prisma.grade.findMany({
+        where: { userId, courseId },
+        include: {
+          examination: true,
+        },
+        orderBy: { id: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.grade.count({ where: { userId, courseId } }),
+    ]);
+
+    return res.status(200).json({
+      data: grades,
+      page,
+      limit,
+      total,
+      // totalPages: Math.ceil(total / limit),
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (err) {
+    console.error('Failed to fetch course grades:', err);
+    return res.status(500).json({ error: 'Failed to fetch course grades' });
+  }
+}
+
+
+
 /**
  * Get all passed courses grouped by semester.
  * @route GET /api/courses/passed
@@ -250,6 +369,9 @@ async function deleteCourse(req, res) {
 module.exports = {
   createCourse,
   getAllCourses,
+  getCourseSummary,
+  getCourseGradesGraph,
+  getCourseGradesTable,
   getPassedCoursesGroupedBySemester,
   getCourseById,
   updateCourse,

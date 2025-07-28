@@ -10,18 +10,14 @@ export default function AddGradeModal({ onClose }) {
 
   const [courseResults, setCourseResults] = useState([]);
   const [examResults, setExamResults] = useState([]);
+  const [semesterQuery, setSemesterQuery] = useState('');
+  const [semesterResults, setSemesterResults] = useState([]);
+
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState(null);
 
-  const [semesters, setSemesters] = useState([]);
-  const [selectedSemesterId, setSelectedSemesterId] = useState('');
   const [showCourseCreate, setShowCourseCreate] = useState(false);
-
-  useEffect(() => {
-    axios.get('/semesters')
-      .then(res => setSemesters(res.data))
-      .catch(err => console.error('Failed to fetch semesters', err));
-  }, []);
 
   useEffect(() => {
     if (courseQuery.length > 0) {
@@ -42,6 +38,16 @@ export default function AddGradeModal({ onClose }) {
       setExamResults([]);
     }
   }, [examQuery]);
+
+  useEffect(() => {
+    if (semesterQuery.length > 0) {
+      axios.get(`/semesters/search?query=${semesterQuery}`).then(res => {
+        setSemesterResults(res.data.results);
+      });
+    } else {
+      setSemesterResults([]);
+    }
+  }, [semesterQuery]);
 
   const handleAddGrade = async () => {
     if (!selectedCourse || !selectedExam || !grade) return;
@@ -65,11 +71,11 @@ export default function AddGradeModal({ onClose }) {
   };
 
   const handleConfirmCreateCourse = async () => {
-    if (!courseQuery.trim() || !selectedSemesterId) return;
+    if (!courseQuery.trim() || !selectedSemester?.id) return;
     try {
       const res = await axios.post('/courses', {
         name: courseQuery,
-        semesterId: parseInt(selectedSemesterId),
+        semesterId: selectedSemester.id,
       });
       setSelectedCourse(res.data);
       setCourseResults([]);
@@ -91,6 +97,19 @@ export default function AddGradeModal({ onClose }) {
     } catch (err) {
       console.error('Failed to create examination:', err);
       toast.error('Failed to create examination');
+    }
+  };
+
+  const handleAddSemester = async () => {
+    if (!semesterQuery.trim()) return;
+    try {
+      const res = await axios.post('/semesters', { name: semesterQuery });
+      setSelectedSemester(res.data);
+      setSemesterQuery(res.data.name);
+      toast.success('Semester created');
+    } catch (err) {
+      console.error('Failed to create semester:', err);
+      toast.error('Failed to create semester');
     }
   };
 
@@ -118,19 +137,37 @@ export default function AddGradeModal({ onClose }) {
 
           {showCourseCreate && (
             <div className="mb-2">
-              <select
-                value={selectedSemesterId}
-                onChange={(e) => setSelectedSemesterId(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm mb-1"
-              >
-                <option value="">Select Semester</option>
-                {semesters.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium">Semester</label>
+              <div className="flex gap-2 mb-1">
+                <input
+                  type="text"
+                  value={semesterQuery}
+                  onChange={(e) => setSemesterQuery(e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Search or create semester"
+                />
+                <button onClick={handleAddSemester} className="bg-gray-200 px-3 py-2 rounded">+ Add</button>
+              </div>
+              {semesterResults.length > 0 && (
+                <ul className="border mt-1 rounded bg-white max-h-32 overflow-y-auto text-sm">
+                  {semesterResults.map(sem => (
+                    <li
+                      key={sem.id}
+                      onClick={() => {
+                        setSelectedSemester(sem);
+                        setSemesterQuery(sem.name);
+                        setSemesterResults([]);
+                      }}
+                      className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                    >
+                      {sem.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button
                 onClick={handleConfirmCreateCourse}
-                className="mt-1 bg-blue-500 text-white px-3 py-2 rounded w-full"
+                className="mt-2 bg-blue-500 text-white px-3 py-2 rounded w-full"
               >
                 Confirm Create Course
               </button>

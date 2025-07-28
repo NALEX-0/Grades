@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from '../utils/axios';
 import AddGradeModal from '../components/AddGradeModal';
 
@@ -43,7 +44,11 @@ export default function PassedCoursesPage() {
                 <tbody>
                   {courses.map(course => (
                     <tr key={course.courseId} className="border-t">
-                      <td className="px-4 py-2">{course.courseName}</td>
+                      <td className="px-4 py-2">
+                        <Link to={`/courses/${course.courseId}`} className="text-blue-600 hover:underline">
+                          {course.courseName}
+                        </Link>
+                      </td>
                       <td className="px-4 py-2 font-semibold text-blue-600">{course.highestGrade}</td>
                     </tr>
                   ))}
@@ -58,4 +63,3 @@ export default function PassedCoursesPage() {
     </div>
   );
 }
-

@@ -1,0 +1,5 @@
+node_modules
+test/
+.env.test
+jest.config.js
+prisma/test.db

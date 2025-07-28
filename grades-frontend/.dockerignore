@@ -1,5 +1,6 @@
 node_modules
+test
+*.test.js
 .env
 .env.test
-/generated/prisma
 *.db

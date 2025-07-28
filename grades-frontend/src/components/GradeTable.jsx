@@ -10,7 +10,8 @@ export default function GradeTable() {
     axios.get(`/grades?page=${p}&limit=5`).then((res) => {
       setGrades(res.data.data);
       setPage(res.data.page);
-      setTotalPages(res.data.totalPages);
+      // setTotalPages(res.data.totalPages);
+      setTotalPages(res.data.totalPages > 0 ? res.data.totalPages : 1);
     });
   };
 
@@ -41,7 +42,7 @@ export default function GradeTable() {
           ))}
         </tbody>
       </table>
-      <div className="flex justify-end gap-2 mt-4">
+      <div className="flex justify-end items-center gap-2 mt-4">
         <button
           className="px-4 py-1 bg-gray-100 rounded disabled:opacity-50"
           onClick={() => fetchGrades(page - 1)}
@@ -49,10 +50,12 @@ export default function GradeTable() {
         >
           Previous
         </button>
+        <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
         <button
           className="px-4 py-1 bg-gray-100 rounded disabled:opacity-50"
           onClick={() => fetchGrades(page + 1)}
-          disabled={page === totalPages}
+          disabled={page >= totalPages}
+          // disabled={page === totalPages}
         >
           Next
         </button>
