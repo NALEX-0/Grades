@@ -43,17 +43,17 @@ async function getAllSemesters(req, res) {
 }
 
 /**
- * Get a semester by ID.
- * @route GET /api/semesters/:id
+ * Get a semester by name.
+ * @route GET /api/semesters/:name
  * @param {string} req.params.id - Semester ID
  * @returns 200 - Semester object
  * @returns 404 - Not found
  */
-async function getSemesterById(req, res) {
-  const { id } = req.params;
+async function getSemesterByName(req, res) {
+  const { name } = req.query;
   try {
     const semester = await prisma.semester.findUnique({
-      where: { id: parseInt(id) },
+      where: { name: name },
     });
 
     if (!semester) {
@@ -63,6 +63,45 @@ async function getSemesterById(req, res) {
     return res.status(200).json(semester);
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch semester' });
+  }
+}
+
+/**
+ * Search semesters by name.
+ * @route GET /api/semesters/search
+ * @query query - Partial semester name
+ * @returns 200 - List of semester matches
+ * @returns 400 - If query is missing
+ * @returns 500 - Server error
+ */
+async function searchSemesters(req, res) {
+  const { query } = req.query;
+
+  if (!query || query.trim().length < 1) {
+    return res.status(400).json({ error: 'Missing search query' });
+  }
+
+  try {
+    const results = await prisma.semester.findMany({
+      where: {
+        name: {
+          contains: query,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+      take: 10,
+    });
+
+    return res.status(200).json({ results });
+  } catch (err) {
+    console.error('Failed to search semesters:', err);
+    return res.status(500).json({ error: 'Failed to search semesters' });
   }
 }
 
@@ -117,7 +156,8 @@ async function deleteSemester(req, res) {
 module.exports = {
   createSemester,
   getAllSemesters,
-  getSemesterById,
+  getSemesterByName,
+  searchSemesters,
   updateSemester,
   deleteSemester,
 };

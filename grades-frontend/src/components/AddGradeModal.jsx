@@ -1,5 +1,4 @@
-// ---- 📁 components/AddGradeModal.jsx ----
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from '../utils/axios';
 import toast from 'react-hot-toast';
 
@@ -40,13 +39,17 @@ export default function AddGradeModal({ onClose }) {
   }, [examQuery]);
 
   useEffect(() => {
-    if (semesterQuery.length > 0) {
-      axios.get(`/semesters/search?query=${semesterQuery}`).then(res => {
-        setSemesterResults(res.data.results);
-      });
-    } else {
-      setSemesterResults([]);
-    }
+    const delay = setTimeout(() => {
+      if (semesterQuery.length > 0) {
+        axios.get(`/semesters/search?query=${semesterQuery}`).then(res => {
+          setSemesterResults(res.data.results);
+        });
+      } else {
+        setSemesterResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delay);
   }, [semesterQuery]);
 
   const handleAddGrade = async () => {
@@ -71,27 +74,59 @@ export default function AddGradeModal({ onClose }) {
   };
 
   const handleConfirmCreateCourse = async () => {
-    if (!courseQuery.trim() || !selectedSemester?.id) return;
+    if (!courseQuery.trim()) {
+      toast.error('Course name is required');
+      return;
+    }
+
     try {
+      // Check if course already exists
+      const searchRes = await axios.get(`/courses/search?query=${courseQuery.trim()}`);
+      const existingCourse = searchRes.data.results.find(
+        course =>
+          course.name.toLowerCase() === courseQuery.trim().toLowerCase() &&
+          course.semester?.id === selectedSemester.id
+      );
+
+      if (existingCourse) {
+        setSelectedCourse(existingCourse);
+        toast.success('Course already exists and was selected');
+        setShowCourseCreate(false);
+        return;
+      }
+
       const res = await axios.post('/courses', {
-        name: courseQuery,
+        name: courseQuery.trim(),
         semesterId: selectedSemester.id,
       });
-      setSelectedCourse(res.data);
+      setSelectedCourse(res.data.course);
       setCourseResults([]);
       setShowCourseCreate(false);
       toast.success('Course created');
     } catch (err) {
       console.error('Failed to create course:', err);
-      toast.error('Failed to create course');
+      toast.error(err.response?.data?.message || 'Failed to create course');
     }
   };
 
   const handleAddExam = async () => {
     if (!examQuery.trim()) return;
     try {
+      // Check if examination already exists
+      const searchRes = await axios.get(`/examinations/search?query=${examQuery.trim()}`);
+      const existingExam = searchRes.data.results.find(
+        exam => exam.name.toLowerCase() === examQuery.trim().toLowerCase()
+      );
+
+      if (existingExam) {
+        setSelectedExam(existingExam);
+        setExamQuery(existingExam.name);
+        toast.success('Examination already exists and was selected');
+        return;
+      }
+
       const res = await axios.post('/examinations', { name: examQuery });
-      setSelectedExam(res.data);
+      setSelectedExam(res.data.exam);
       setExamResults([]);
       toast.success('Examination created');
     } catch (err) {
@@ -103,13 +138,29 @@ export default function AddGradeModal({ onClose }) {
   const handleAddSemester = async () => {
     if (!semesterQuery.trim()) return;
     try {
-      const res = await axios.post('/semesters', { name: semesterQuery });
-      setSelectedSemester(res.data);
-      setSemesterQuery(res.data.name);
+      // Check if semester already exists
+      const searchRes = await axios.get(`/semesters/search?query=${semesterQuery.trim()}`);
+      const existingSemester = searchRes.data.results.find(
+        sem => sem.name.toLowerCase() === semesterQuery.trim().toLowerCase()
+      );
+
+      if (existingSemester) {
+        setSelectedSemester(existingSemester);
+        setSemesterQuery(existingSemester.name);
+        toast.success('Semester already exists and was selected');
+        return;
+      }
+
+      const res = await axios.post('/semesters', { 
+        name: semesterQuery.trim() 
+      });
+      setSelectedSemester(res.data.semester);
+      setSemesterQuery(res.data.semester.name), 0;
+      setSemesterResults([]);
       toast.success('Semester created');
     } catch (err) {
       console.error('Failed to create semester:', err);
-      toast.error('Failed to create semester');
+      toast.error(err.response?.data?.message || 'Failed to create semester');
     }
   };
 
@@ -132,9 +183,12 @@ export default function AddGradeModal({ onClose }) {
               className="border rounded px-3 py-2 w-full"
               placeholder="Search or select course"
             />
-            <button onClick={handleAddCourseClick} className="bg-gray-200 px-3 py-2 rounded">+ Add</button>
+            <button onClick={handleAddCourseClick} className="bg-gray-200 px-3 py-2 rounded">
+              + Add
+            </button>
           </div>
 
+          {/* Semester Search */}
           {showCourseCreate && (
             <div className="mb-2">
               <label className="block text-sm font-medium">Semester</label>
@@ -142,12 +196,20 @@ export default function AddGradeModal({ onClose }) {
                 <input
                   type="text"
                   value={semesterQuery}
-                  onChange={(e) => setSemesterQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSemesterQuery(e.target.value);
+                    if (selectedSemester && selectedSemester.name !== e.target.value) {
+                      setSelectedSemester(null);
+                    }
+                  }}
                   className="border rounded px-3 py-2 w-full"
                   placeholder="Search or create semester"
                 />
-                <button onClick={handleAddSemester} className="bg-gray-200 px-3 py-2 rounded">+ Add</button>
+                <button onClick={handleAddSemester} className="bg-gray-200 px-3 py-2 rounded">
+                  + Add
+                </button>
               </div>
+
               {semesterResults.length > 0 && (
                 <ul className="border mt-1 rounded bg-white max-h-32 overflow-y-auto text-sm">
                   {semesterResults.map(sem => (
@@ -157,6 +219,7 @@ export default function AddGradeModal({ onClose }) {
                         setSelectedSemester(sem);
                         setSemesterQuery(sem.name);
                         setSemesterResults([]);
+                        toast.success(`Semester selected: ${sem.name}`);
                       }}
                       className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
                     >
@@ -165,9 +228,17 @@ export default function AddGradeModal({ onClose }) {
                   ))}
                 </ul>
               )}
+
+              {selectedSemester && (
+                <div className="text-sm text-green-600 mt-1">
+                  Selected: {selectedSemester.name}
+                </div>
+              )}
+
               <button
                 onClick={handleConfirmCreateCourse}
-                className="mt-2 bg-blue-500 text-white px-3 py-2 rounded w-full"
+                disabled={!selectedSemester}
+                className="mt-2 bg-blue-500 text-white px-3 py-2 rounded w-full disabled:opacity-50"
               >
                 Confirm Create Course
               </button>
