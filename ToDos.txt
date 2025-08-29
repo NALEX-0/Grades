@@ -1,1 +1,2 @@
 1. Add UI for deleting semesters and examinations 
+2. Fix testing
